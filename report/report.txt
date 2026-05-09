@@ -1,0 +1,185 @@
+# Nmap Reconnaissance Report
+**Target:** 192.168.56.102 (Metasploitable 2)  
+**Scanner:** Kali Linux — Nmap 7.95  
+**Scans Performed:** May 7, 2026  
+**Report Version:** 3.0 (Updated with Real Scan Evidence)  
+**Author:** [Your Name]
+
+---
+
+## Disclaimer
+
+> This reconnaissance was performed on a deliberately vulnerable virtual machine (Metasploitable 2) in a **controlled, isolated lab environment** using Oracle VirtualBox. No real-world systems were targeted. All findings are for **educational purposes only**.
+
+---
+
+## Network Topology
+
+```
+ ┌─────────────────────┐        Host-Only Network
+ │   Kali Linux        │        192.168.56.0/24
+ │   192.168.56.101    │◄──────────────────────►│ Metasploitable 2    │
+ │   (Attacker)        │                         │ 192.168.56.102      │
+ └─────────────────────┘                         └─────────────────────┘
+```
+
+---
+
+## Scans Performed
+
+| # | Scan Type              | Command                                        | Output File                 | Duration  |
+|---|------------------------|------------------------------------------------|-----------------------------|-----------|
+| 1 | Basic TCP Port Scan    | `nmap --privileged 192.168.56.102`             | `scans/basic_scan.txt`      | 17s       |
+| 2 | Service Version Scan   | `nmap --privileged -sV 192.168.56.102`         | `scans/service_scan.txt`    | 29s       |
+| 3 | Aggressive Scan        | `nmap --privileged -A 192.168.56.102`          | `scans/aggressive_scan.txt` | 71s       |
+| 4 | NSE Default Scripts    | `nmap --privileged -sC -sV 192.168.56.102`     | `scans/nse_scan.txt`        | 69s       |
+| 5 | Vulnerability Scripts  | `nmap --privileged --script vuln 192.168.56.102` | `scans/vuln_scan.txt`     | 344s      |
+
+---
+
+## OS Detection Results
+
+| Field        | Value                          |
+|--------------|-------------------------------|
+| OS           | Linux 2.6.9 – 2.6.33          |
+| CPE          | cpe:/o:linux:linux_kernel:2.6  |
+| Hostname     | metasploitable.localdomain     |
+| NetBIOS Name | METASPLOITABLE                 |
+| Domain       | localdomain                    |
+| MAC Address  | 08:00:27:57:80:E8 (VirtualBox) |
+| Network Dist | 1 hop (direct LAN)             |
+
+---
+
+## Risk Rating Scale
+
+| Rating      | Meaning                                                        |
+|-------------|----------------------------------------------------------------|
+| 🔴 Critical | Confirmed RCE, backdoors, or unauthenticated root access       |
+| 🟠 High     | Exploitable services, weak auth, deprecated protocols          |
+| 🟡 Medium   | Information disclosure, weak encryption, MitM vulnerability    |
+| 🟢 Low      | Minimal direct risk, hardening recommended                     |
+
+---
+
+## Confirmed Vulnerabilities (from vuln_scan.txt)
+
+These were directly confirmed as **VULNERABLE** or **LIKELY VULNERABLE** by Nmap NSE scripts.
+
+| Port     | Service         | Version               | CVE / Issue                                         | Scan Status          | Risk       |
+|----------|-----------------|-----------------------|-----------------------------------------------------|----------------------|------------|
+| 21/tcp   | FTP             | vsftpd 2.3.4          | CVE-2011-2523 — Backdoor RCE (shell confirmed: uid=0) | ✅ VULNERABLE       | 🔴 Critical |
+| 25/tcp   | SMTP            | Postfix smtpd         | CVE-2015-4000 — Logjam TLS DHE_EXPORT downgrade    | ✅ VULNERABLE        | 🟡 Medium  |
+| 25/tcp   | SMTP            | Postfix smtpd         | CVE-2014-3566 — SSL POODLE information leak         | ✅ VULNERABLE        | 🟡 Medium  |
+| 25/tcp   | SMTP            | Postfix smtpd         | Anonymous Diffie-Hellman Key Exchange MitM          | ✅ VULNERABLE        | 🟡 Medium  |
+| 25/tcp   | SMTP            | Postfix smtpd         | DH Key Exchange Insufficient Group Strength         | ✅ VULNERABLE        | 🟡 Medium  |
+| 80/tcp   | HTTP            | Apache httpd 2.2.8    | SQL Injection — multiple endpoints in /mutillidae, /dav, /twiki | ✅ VULNERABLE | 🔴 Critical |
+| 80/tcp   | HTTP            | Apache httpd 2.2.8    | CSRF — found in /dvwa/login.php, /twiki             | ✅ VULNERABLE        | 🟠 High    |
+| 80/tcp   | HTTP            | Apache httpd 2.2.8    | HTTP TRACE enabled — XST attack possible            | ✅ VULNERABLE        | 🟡 Medium  |
+| 80/tcp   | HTTP            | Apache httpd 2.2.8    | Sensitive paths exposed (/phpMyAdmin, /phpinfo.php, /dvwa, /tikiwiki) | ✅ Found | 🟠 High  |
+| 1099/tcp | Java RMI        | GNU Classpath grmiregistry | RMI default config — remote classloader RCE    | ✅ VULNERABLE        | 🔴 Critical |
+| 5432/tcp | PostgreSQL      | PostgreSQL 8.3.0–8.3.7 | CVE-2014-0224 — SSL/TLS CCS Injection (MitM)       | ✅ VULNERABLE        | 🟠 High    |
+| 5432/tcp | PostgreSQL      | PostgreSQL 8.3.0–8.3.7 | CVE-2014-3566 — SSL POODLE information leak        | ✅ VULNERABLE        | 🟡 Medium  |
+| 5432/tcp | PostgreSQL      | PostgreSQL 8.3.0–8.3.7 | DH Key Exchange Insufficient Group Strength        | ✅ VULNERABLE        | 🟡 Medium  |
+| 8180/tcp | Apache Tomcat   | Tomcat 5.5            | CVE-2007-6750 — Slowloris DoS attack               | ⚠️ LIKELY VULNERABLE | 🟠 High    |
+| 8180/tcp | Apache Tomcat   | Tomcat 5.5            | JSESSIONID httponly flag not set — session hijack risk | ✅ VULNERABLE    | 🟡 Medium  |
+| 8180/tcp | Apache Tomcat   | Tomcat 5.5            | /manager/html exposed (401 — default creds likely) | ✅ Found             | 🟠 High    |
+
+---
+
+## All Open Ports — Service, Version & Recommendations
+
+| Port     | Service      | Version                    | Risk       | Recommendation                                                    |
+|----------|--------------|----------------------------|------------|-------------------------------------------------------------------|
+| 21/tcp   | FTP          | vsftpd 2.3.4               | 🔴 Critical | Upgrade vsftpd immediately. Backdoor confirmed exploitable (root shell obtained). Disable anonymous FTP login. |
+| 22/tcp   | SSH          | OpenSSH 4.7p1              | 🟡 Medium  | Upgrade OpenSSH. Disable DSA keys and weak CBC ciphers.           |
+| 23/tcp   | Telnet       | Linux telnetd              | 🟠 High    | Disable Telnet completely. Use SSH instead — Telnet sends credentials in plaintext. |
+| 25/tcp   | SMTP         | Postfix smtpd              | 🟡 Medium  | Disable SSLv2/SSLv3. Enforce TLS 1.2+. Fix DH group to 2048-bit+. |
+| 53/tcp   | DNS          | ISC BIND 9.4.2             | 🟠 High    | Upgrade BIND. CVE-2008-1447 DNS cache poisoning — enable DNSSEC.  |
+| 80/tcp   | HTTP         | Apache httpd 2.2.8         | 🔴 Critical | Multiple SQLi and CSRF confirmed. Disable TRACE method. Remove /phpinfo.php, /phpMyAdmin. Upgrade Apache. |
+| 111/tcp  | RPCbind      | RPC #100000 v2             | 🟡 Medium  | Restrict RPC access via firewall. Disable if NFS is not needed.   |
+| 139/tcp  | NetBIOS-SSN  | Samba 3.0.20-Debian        | 🔴 Critical | CVE-2007-2447 RCE — upgrade Samba immediately. SMB signing disabled (confirmed by scan). |
+| 445/tcp  | SMB          | Samba 3.0.20-Debian        | 🔴 Critical | Same as above. Enable SMB message signing.                        |
+| 512/tcp  | rexec        | netkit-rsh rexecd          | 🟠 High    | Disable rexec. No encryption, no strong auth. Use SSH.            |
+| 513/tcp  | rlogin       | OpenBSD rlogind            | 🟠 High    | Disable rlogin. Deprecated and insecure. Use SSH.                 |
+| 514/tcp  | rsh          | Netkit rshd                | 🟠 High    | Disable rsh. No authentication or encryption. Use SSH.            |
+| 1099/tcp | Java RMI     | GNU Classpath grmiregistry | 🔴 Critical | RCE confirmed via remote classloader. Disable or restrict to localhost only. |
+| 1524/tcp | Bindshell    | Metasploitable root shell  | 🔴 Critical | Intentional backdoor — unauthenticated root shell on open port. Must never exist in production. |
+| 2049/tcp | NFS          | NFS 2-4 (RPC #100003)      | 🟠 High    | Restrict NFS exports. Require Kerberos auth. Block from external access. |
+| 2121/tcp | FTP          | ProFTPD 1.3.1              | 🟠 High    | CVE-2010-4221 buffer overflow. Upgrade ProFTPD or disable if redundant. |
+| 3306/tcp | MySQL        | MySQL 5.0.51a              | 🔴 Critical | Root login with no password confirmed. Set strong root password. Disable remote root login. |
+| 5432/tcp | PostgreSQL   | PostgreSQL 8.3.0–8.3.7     | 🟠 High    | CCS Injection and POODLE confirmed. Upgrade PostgreSQL and OpenSSL. |
+| 5900/tcp | VNC          | VNC protocol 3.3           | 🟠 High    | Weak auth, no encryption. Upgrade to VNC 3.8+. Use SSH tunneling. |
+| 6000/tcp | X11          | X11 (access denied)        | 🟡 Medium  | Keep disabled. Never expose X11 over a network.                   |
+| 6667/tcp | IRC          | UnrealIRCd 3.2.8.1         | 🔴 Critical | CVE-2010-2075 hardcoded backdoor. Remove UnrealIRCd entirely.     |
+| 8009/tcp | AJP          | Apache Jserv 1.3           | 🔴 Critical | CVE-2020-1938 Ghostcat — file read/inclusion. Disable AJP connector if unused. |
+| 8180/tcp | HTTP (Tomcat)| Apache Tomcat 5.5          | 🟠 High    | Slowloris DoS likely. /manager/html exposed. Change default creds. Upgrade Tomcat. Set httponly on JSESSIONID. |
+
+---
+
+## Critical Findings — Exploit Summary
+
+| # | Port  | Service          | CVE / Issue           | Evidence from Scan                                      |
+|---|-------|------------------|-----------------------|---------------------------------------------------------|
+| 1 | 21    | vsftpd 2.3.4     | CVE-2011-2523         | Shell command `id` returned `uid=0(root) gid=0(root)` — root confirmed |
+| 2 | 80    | Apache HTTP      | SQL Injection         | 80+ injectable endpoints found in /mutillidae, /dav, /twiki |
+| 3 | 80    | Apache HTTP      | CSRF                  | Confirmed in /dvwa/login.php and /twiki forms           |
+| 4 | 139/445 | Samba 3.0.20   | CVE-2007-2447         | SMB signing disabled, guest auth allowed, OS fingerprinted |
+| 5 | 1099  | Java RMI         | RMI Classloader RCE   | Default config confirmed — remote class loading enabled  |
+| 6 | 1524  | Bindshell        | Intentional backdoor  | Port open — unauthenticated root shell                  |
+| 7 | 3306  | MySQL 5.0.51a    | No root password      | MySQL responded without auth — root accessible          |
+| 8 | 5432  | PostgreSQL       | CVE-2014-0224         | CCS Injection confirmed — session hijack possible       |
+| 9 | 6667  | UnrealIRCd       | CVE-2010-2075         | Backdoored binary running — DEBUG3 RCE possible         |
+| 10| 8009  | AJP/Ghostcat     | CVE-2020-1938         | AJP connector open — WEB-INF file read possible         |
+
+---
+
+## Additional Findings from NSE & Aggressive Scans
+
+| Finding                        | Detail                                                               |
+|-------------------------------|----------------------------------------------------------------------|
+| Anonymous FTP login            | Confirmed on port 21 — `ftp-anon: Anonymous FTP login allowed`      |
+| SSLv2 enabled on SMTP          | Weak ciphers: SSL2_DES_64, SSL2_RC4_128 — confirmed in aggressive scan |
+| SSL cert expired               | Certificate expired 2010-04-16 — still in use on ports 25 and 5432  |
+| SMB signing disabled           | Confirmed on 445 — dangerous, allows MitM on SMB sessions           |
+| SMB guest auth allowed         | Guest account usable — no password required for initial access       |
+| Clock skew detected            | Target system time skewed by ~24 min — may affect time-based auth   |
+| Sensitive web paths exposed    | /phpMyAdmin/, /phpinfo.php, /dvwa/, /tikiwiki/ all publicly accessible |
+| Apache WebDAV enabled          | /dav/ directory accessible — potential file upload vector            |
+| Tomcat /webdav/ exposed        | /webdav/ folder found on port 8180                                   |
+| JSESSIONID no httponly flag    | Session cookies accessible via JavaScript — XSS risk on Tomcat       |
+
+---
+
+## Improvements Made (v3.0)
+
+| Version | Improvement                                                                 |
+|---------|-----------------------------------------------------------------------------|
+| v2.0    | Added vulnerability script scan (`--script vuln`)                           |
+| v2.0    | Added UDP scan (`-sU --top-ports 100`)                                      |
+| v2.0    | Added `recon.sh` automation script — runs all scans end-to-end             |
+| v2.0    | All scans saved in 3 formats (`.nmap`, `.xml`, `.gnmap`) via `-oA`         |
+| v2.0    | README upgraded with topology diagram, structure, quick-start              |
+| v3.0    | Report updated with **real confirmed CVEs** from actual vuln scan output    |
+| v3.0    | Added exploit evidence column — actual scan output used as proof            |
+| v3.0    | Added additional findings table from NSE and aggressive scan results        |
+| v3.0    | Anonymous FTP, SSLv2, expired certs, SMB issues documented from real scans |
+| v3.0    | SQL injection endpoints, CSRF paths, and exposed web paths catalogued      |
+
+---
+
+## Conclusion
+
+Metasploitable 2 exposes **23 open TCP ports** with **10 critically exploitable services**. The vulnerability scan directly confirmed root-level code execution via the vsftpd backdoor (CVE-2011-2523), multiple SQL injection endpoints on port 80, RMI remote classloader RCE on port 1099, and SSL/TLS weaknesses (POODLE, CCS Injection, Logjam) on ports 25 and 5432.
+
+Key takeaways from this exercise:
+- Outdated software versions are the primary attack surface
+- Backdoored binaries (vsftpd, UnrealIRCd) are a real-world supply chain threat
+- Unencrypted protocols (Telnet, rsh, rlogin, FTP) should never be used in production
+- Anonymous FTP and guest SMB access dramatically reduce the effort needed to compromise a system
+- Web applications need input validation — SQLi and CSRF were confirmed across multiple endpoints
+- A single misconfigured service is enough for full system compromise
+
+---
+
+*Report generated as part of a cybersecurity learning lab. All scanning was performed with explicit permission on an isolated virtual environment.*
